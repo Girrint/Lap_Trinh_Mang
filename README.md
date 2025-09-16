@@ -1,71 +1,45 @@
-
 ```csharp
 using System;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Diagnostics;
 
-public class IpInfo
+class Program
 {
-    public static void Main(string[] args)
+    static void Main()
     {
-        try
+        // Lấy thông tin về các giao diện mạng trên máy
+        NetworkInterface[] networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+
+        foreach (NetworkInterface netInterface in networkInterfaces)
         {
-            // Lấy thông tin địa chỉ IP của local host
-            IPAddress ipAddress = Dns.GetHostEntry(IPAddress.Parse("127.0.0.1")).AddressList[0];
-
-            // Lấy subnet mask bằng cách sử dụng IPAddress.GetDefaultPrefixSuffix
-            string subnetMask = ipAddress.GetDefaultPrefixSuffix().ToString();
-
-            // Lấy thông tin default gateway bằng lệnh ipconfig
-            string defaultGateway = GetDefaultGateway();
-
-            Console.WriteLine("Thông tin giao thức IP của Local Host:");
-            Console.WriteLine("----------------------------------");
-            Console.WriteLine($"Địa chỉ IP: {ipAddress}");
-            Console.WriteLine($"Subnet Mask: {subnetMask}");
-            Console.WriteLine($"Default Gateway: {defaultGateway}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Đã xảy ra lỗi: {ex.Message}");
-        }
-
-        Console.ReadKey();
-    }
-
-    static string GetDefaultGateway()
-    {
-        try
-        {
-            Process process = new Process();
-            process.StartInfo.FileName = "powershell.exe";
-            process.StartInfo.Arguments = "-Command (Get-NetRoute -DestinationPrefix 0.0.0.0/0).NextHop";
-            process.StartInfo.UseShellExecute = false;
-            process.StartInfo.RedirectStandardOutput = true;
-            process.StartInfo.RedirectStandardError = true;
-            process.Start();
-
-            string output = process.StandardOutput.ReadToEnd();
-            string error = process.StandardError.ReadToEnd();
-
-            process.WaitForExit();
-
-            if (string.IsNullOrEmpty(output))
+            // Kiểm tra xem giao diện mạng có khả dụng không
+            if (netInterface.OperationalStatus == OperationalStatus.Up)
             {
-                Console.WriteLine("Không thể lấy thông tin default gateway từ ipconfig.");
-                return "Không tìm thấy";
-            }
+                // Lấy thông tin cấu hình IP cho giao diện mạng này
+                IPInterfaceProperties ipProperties = netInterface.GetIPProperties();
 
-            Console.WriteLine("Output: " + output);
-            return output.Trim(); // Remove leading/trailing whitespace
+                // Lấy địa chỉ IPv4 (chỉ lấy IP IPv4)
+                foreach (UnicastIPAddressInformation ipAddress in ipProperties.UnicastAddresses)
+                {
+                    if (ipAddress.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                    {
+                        Console.WriteLine("Interface: " + netInterface.Name);
+                        Console.WriteLine("IP Address: " + ipAddress.Address);
+                        Console.WriteLine("Subnet Mask: " + ipAddress.IPv4Mask);
+                    }
+                }
+
+                // Lấy Default Gateway
+                foreach (GatewayIPAddressInformation gateway in ipProperties.GatewayAddresses)
+                {
+                    Console.WriteLine("Default Gateway: " + gateway.Address);
+                }
+
+                Console.WriteLine(new string('-', 30));
+            }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Lỗi lấy thông tin default gateway: {ex.Message}");
-            return "Không tìm thấy";
-        }
+
+        Console.ReadLine();
     }
 }
 ```
-
